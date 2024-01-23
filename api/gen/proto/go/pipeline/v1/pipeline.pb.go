@@ -20,7 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// A Pipeline is a self-contained block of configuration that can be assigned to
+// A Pipeline is a self-contained snippet of configuration that can be assigned to
 // agents based on matchers.
 type Pipeline struct {
 	state         protoimpl.MessageState
@@ -32,9 +32,7 @@ type Pipeline struct {
 	// The configuration contents of the pipeline to be used by agents.
 	Contents string `protobuf:"bytes,2,opt,name=contents,proto3" json:"contents,omitempty"`
 	// Matchers are used to match against agents and assign pipelines to them.
-	//
-	// They follow the syntax of the Prometheus Alertmanager matchers:
-	// https://prometheus.io/docs/alerting/latest/configuration/#matcher
+	// They follow the syntax of the Prometheus [Alertmanager matchers](https://prometheus.io/docs/alerting/latest/configuration/#matcher)
 	Matchers []string `protobuf:"bytes,3,rep,name=matchers,proto3" json:"matchers,omitempty"`
 }
 
