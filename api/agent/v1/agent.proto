@@ -20,13 +20,24 @@ message GetAgentRequest {
   string id = 1;
 }
 
-message GetAgentResponse {
-  map<string, string> metadata = 1;
-}
-
 message Agent {
   string id = 1;
   map<string, string> metadata = 2;
+}
+
+message ListAgentsRequest {
+}
+
+message Agents {
+  repeated Agent agents = 1;
+}
+
+message CreateAgentRequest {
+  Agent agent = 1;
+}
+
+message UpdateAgentRequest {
+  Agent agent = 1;
 }
 
 message DeleteAgentRequest {
@@ -46,14 +57,17 @@ service AgentService {
   };
 
   // GetAgent returns information about the agent.
-  rpc GetAgent(GetAgentRequest) returns (GetAgentResponse);
+  rpc GetAgent (GetAgentRequest) returns (Agent);
+
+  // ListAgents returns information about all agents.
+  rpc ListAgents (ListAgentsRequest) returns (Agents);
 
   // CreateAgent registers a new agent.
-  rpc CreateAgent(Agent) returns (Agent);
+  rpc CreateAgent (CreateAgentRequest) returns (Agent);
 
   // UpdateAgent updates an existing agent.
-  rpc UpdateAgent(Agent) returns (Agent);
+  rpc UpdateAgent (UpdateAgentRequest) returns (Agent);
 
   // DeleteAgent deletes an existing agent.
-  rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse);
+  rpc DeleteAgent (DeleteAgentRequest) returns (DeleteAgentResponse);
 }

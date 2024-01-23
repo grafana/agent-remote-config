@@ -37,6 +37,8 @@ const (
 	AgentServiceGetConfigProcedure = "/agent.v1.AgentService/GetConfig"
 	// AgentServiceGetAgentProcedure is the fully-qualified name of the AgentService's GetAgent RPC.
 	AgentServiceGetAgentProcedure = "/agent.v1.AgentService/GetAgent"
+	// AgentServiceListAgentsProcedure is the fully-qualified name of the AgentService's ListAgents RPC.
+	AgentServiceListAgentsProcedure = "/agent.v1.AgentService/ListAgents"
 	// AgentServiceCreateAgentProcedure is the fully-qualified name of the AgentService's CreateAgent
 	// RPC.
 	AgentServiceCreateAgentProcedure = "/agent.v1.AgentService/CreateAgent"
@@ -53,11 +55,13 @@ type AgentServiceClient interface {
 	// GetConfig returns the agent's configuration.
 	GetConfig(context.Context, *connect.Request[v1.GetConfigRequest]) (*connect.Response[v1.GetConfigResponse], error)
 	// GetAgent returns information about the agent.
-	GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.GetAgentResponse], error)
+	GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.Agent], error)
+	// ListAgents returns information about all agents.
+	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.Agents], error)
 	// CreateAgent registers a new agent.
-	CreateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error)
+	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.Agent], error)
 	// UpdateAgent updates an existing agent.
-	UpdateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error)
+	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.Agent], error)
 	// DeleteAgent deletes an existing agent.
 	DeleteAgent(context.Context, *connect.Request[v1.DeleteAgentRequest]) (*connect.Response[v1.DeleteAgentResponse], error)
 }
@@ -78,17 +82,22 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		getAgent: connect.NewClient[v1.GetAgentRequest, v1.GetAgentResponse](
+		getAgent: connect.NewClient[v1.GetAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceGetAgentProcedure,
 			opts...,
 		),
-		createAgent: connect.NewClient[v1.Agent, v1.Agent](
+		listAgents: connect.NewClient[v1.ListAgentsRequest, v1.Agents](
+			httpClient,
+			baseURL+AgentServiceListAgentsProcedure,
+			opts...,
+		),
+		createAgent: connect.NewClient[v1.CreateAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceCreateAgentProcedure,
 			opts...,
 		),
-		updateAgent: connect.NewClient[v1.Agent, v1.Agent](
+		updateAgent: connect.NewClient[v1.UpdateAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceUpdateAgentProcedure,
 			opts...,
@@ -104,9 +113,10 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // agentServiceClient implements AgentServiceClient.
 type agentServiceClient struct {
 	getConfig   *connect.Client[v1.GetConfigRequest, v1.GetConfigResponse]
-	getAgent    *connect.Client[v1.GetAgentRequest, v1.GetAgentResponse]
-	createAgent *connect.Client[v1.Agent, v1.Agent]
-	updateAgent *connect.Client[v1.Agent, v1.Agent]
+	getAgent    *connect.Client[v1.GetAgentRequest, v1.Agent]
+	listAgents  *connect.Client[v1.ListAgentsRequest, v1.Agents]
+	createAgent *connect.Client[v1.CreateAgentRequest, v1.Agent]
+	updateAgent *connect.Client[v1.UpdateAgentRequest, v1.Agent]
 	deleteAgent *connect.Client[v1.DeleteAgentRequest, v1.DeleteAgentResponse]
 }
 
@@ -116,17 +126,22 @@ func (c *agentServiceClient) GetConfig(ctx context.Context, req *connect.Request
 }
 
 // GetAgent calls agent.v1.AgentService.GetAgent.
-func (c *agentServiceClient) GetAgent(ctx context.Context, req *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.GetAgentResponse], error) {
+func (c *agentServiceClient) GetAgent(ctx context.Context, req *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return c.getAgent.CallUnary(ctx, req)
 }
 
+// ListAgents calls agent.v1.AgentService.ListAgents.
+func (c *agentServiceClient) ListAgents(ctx context.Context, req *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.Agents], error) {
+	return c.listAgents.CallUnary(ctx, req)
+}
+
 // CreateAgent calls agent.v1.AgentService.CreateAgent.
-func (c *agentServiceClient) CreateAgent(ctx context.Context, req *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error) {
+func (c *agentServiceClient) CreateAgent(ctx context.Context, req *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return c.createAgent.CallUnary(ctx, req)
 }
 
 // UpdateAgent calls agent.v1.AgentService.UpdateAgent.
-func (c *agentServiceClient) UpdateAgent(ctx context.Context, req *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error) {
+func (c *agentServiceClient) UpdateAgent(ctx context.Context, req *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return c.updateAgent.CallUnary(ctx, req)
 }
 
@@ -140,11 +155,13 @@ type AgentServiceHandler interface {
 	// GetConfig returns the agent's configuration.
 	GetConfig(context.Context, *connect.Request[v1.GetConfigRequest]) (*connect.Response[v1.GetConfigResponse], error)
 	// GetAgent returns information about the agent.
-	GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.GetAgentResponse], error)
+	GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.Agent], error)
+	// ListAgents returns information about all agents.
+	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.Agents], error)
 	// CreateAgent registers a new agent.
-	CreateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error)
+	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.Agent], error)
 	// UpdateAgent updates an existing agent.
-	UpdateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error)
+	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.Agent], error)
 	// DeleteAgent deletes an existing agent.
 	DeleteAgent(context.Context, *connect.Request[v1.DeleteAgentRequest]) (*connect.Response[v1.DeleteAgentResponse], error)
 }
@@ -164,6 +181,11 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 	agentServiceGetAgentHandler := connect.NewUnaryHandler(
 		AgentServiceGetAgentProcedure,
 		svc.GetAgent,
+		opts...,
+	)
+	agentServiceListAgentsHandler := connect.NewUnaryHandler(
+		AgentServiceListAgentsProcedure,
+		svc.ListAgents,
 		opts...,
 	)
 	agentServiceCreateAgentHandler := connect.NewUnaryHandler(
@@ -187,6 +209,8 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 			agentServiceGetConfigHandler.ServeHTTP(w, r)
 		case AgentServiceGetAgentProcedure:
 			agentServiceGetAgentHandler.ServeHTTP(w, r)
+		case AgentServiceListAgentsProcedure:
+			agentServiceListAgentsHandler.ServeHTTP(w, r)
 		case AgentServiceCreateAgentProcedure:
 			agentServiceCreateAgentHandler.ServeHTTP(w, r)
 		case AgentServiceUpdateAgentProcedure:
@@ -206,15 +230,19 @@ func (UnimplementedAgentServiceHandler) GetConfig(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.GetConfig is not implemented"))
 }
 
-func (UnimplementedAgentServiceHandler) GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.GetAgentResponse], error) {
+func (UnimplementedAgentServiceHandler) GetAgent(context.Context, *connect.Request[v1.GetAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.GetAgent is not implemented"))
 }
 
-func (UnimplementedAgentServiceHandler) CreateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error) {
+func (UnimplementedAgentServiceHandler) ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.Agents], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.ListAgents is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.CreateAgent is not implemented"))
 }
 
-func (UnimplementedAgentServiceHandler) UpdateAgent(context.Context, *connect.Request[v1.Agent]) (*connect.Response[v1.Agent], error) {
+func (UnimplementedAgentServiceHandler) UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.Agent], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.UpdateAgent is not implemented"))
 }
 
