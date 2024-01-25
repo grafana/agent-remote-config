@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_7_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// AgentServiceName is the fully-qualified name of the AgentService service.
@@ -50,6 +50,17 @@ const (
 	AgentServiceDeleteAgentProcedure = "/agent.v1.AgentService/DeleteAgent"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	agentServiceServiceDescriptor           = v1.File_agent_v1_agent_proto.Services().ByName("AgentService")
+	agentServiceGetConfigMethodDescriptor   = agentServiceServiceDescriptor.Methods().ByName("GetConfig")
+	agentServiceGetAgentMethodDescriptor    = agentServiceServiceDescriptor.Methods().ByName("GetAgent")
+	agentServiceListAgentsMethodDescriptor  = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
+	agentServiceCreateAgentMethodDescriptor = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
+	agentServiceUpdateAgentMethodDescriptor = agentServiceServiceDescriptor.Methods().ByName("UpdateAgent")
+	agentServiceDeleteAgentMethodDescriptor = agentServiceServiceDescriptor.Methods().ByName("DeleteAgent")
+)
+
 // AgentServiceClient is a client for the agent.v1.AgentService service.
 type AgentServiceClient interface {
 	// GetConfig returns the agent's configuration.
@@ -79,33 +90,39 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 		getConfig: connect.NewClient[v1.GetConfigRequest, v1.GetConfigResponse](
 			httpClient,
 			baseURL+AgentServiceGetConfigProcedure,
+			connect.WithSchema(agentServiceGetConfigMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getAgent: connect.NewClient[v1.GetAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceGetAgentProcedure,
-			opts...,
+			connect.WithSchema(agentServiceGetAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		listAgents: connect.NewClient[v1.ListAgentsRequest, v1.Agents](
 			httpClient,
 			baseURL+AgentServiceListAgentsProcedure,
-			opts...,
+			connect.WithSchema(agentServiceListAgentsMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		createAgent: connect.NewClient[v1.CreateAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceCreateAgentProcedure,
-			opts...,
+			connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		updateAgent: connect.NewClient[v1.UpdateAgentRequest, v1.Agent](
 			httpClient,
 			baseURL+AgentServiceUpdateAgentProcedure,
-			opts...,
+			connect.WithSchema(agentServiceUpdateAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		deleteAgent: connect.NewClient[v1.DeleteAgentRequest, v1.DeleteAgentResponse](
 			httpClient,
 			baseURL+AgentServiceDeleteAgentProcedure,
-			opts...,
+			connect.WithSchema(agentServiceDeleteAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
@@ -175,33 +192,39 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 	agentServiceGetConfigHandler := connect.NewUnaryHandler(
 		AgentServiceGetConfigProcedure,
 		svc.GetConfig,
+		connect.WithSchema(agentServiceGetConfigMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceGetAgentHandler := connect.NewUnaryHandler(
 		AgentServiceGetAgentProcedure,
 		svc.GetAgent,
-		opts...,
+		connect.WithSchema(agentServiceGetAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceListAgentsHandler := connect.NewUnaryHandler(
 		AgentServiceListAgentsProcedure,
 		svc.ListAgents,
-		opts...,
+		connect.WithSchema(agentServiceListAgentsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceCreateAgentHandler := connect.NewUnaryHandler(
 		AgentServiceCreateAgentProcedure,
 		svc.CreateAgent,
-		opts...,
+		connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceUpdateAgentHandler := connect.NewUnaryHandler(
 		AgentServiceUpdateAgentProcedure,
 		svc.UpdateAgent,
-		opts...,
+		connect.WithSchema(agentServiceUpdateAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceDeleteAgentHandler := connect.NewUnaryHandler(
 		AgentServiceDeleteAgentProcedure,
 		svc.DeleteAgent,
-		opts...,
+		connect.WithSchema(agentServiceDeleteAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/agent.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
