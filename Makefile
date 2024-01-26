@@ -1,3 +1,3 @@
 .PHONY: buf-generate
 buf-generate:
-	cd api && buf generate
+	buf generate api -o ./api
