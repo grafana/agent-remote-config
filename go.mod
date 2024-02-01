@@ -1,6 +1,6 @@
 module github.com/grafana/agent-remote-config
 
-go 1.21.3
+go 1.21.0
 
 require (
 	connectrpc.com/connect v1.14.0
