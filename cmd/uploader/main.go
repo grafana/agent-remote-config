@@ -40,6 +40,11 @@ func main() {
 	}
 	log.Printf("Loaded %d local pipelines", len(pipes))
 
+	if *flagBackupDir != "" {
+		os.RemoveAll(*flagBackupDir)
+		os.MkdirAll(*flagBackupDir, 0764)
+	}
+
 	hclient := &http.Client{
 		Transport: &mytransport{},
 	}
@@ -61,6 +66,9 @@ func main() {
 
 	for _, p := range resp.Msg.Pipelines {
 		remoteNames[p.Name] = true
+		if *flagBackupDir != "" {
+			writePipelineToFile(*flagBackupDir, p)
+		}
 	}
 	for _, p := range pipes {
 		localNames[p.Name] = true
@@ -118,13 +126,13 @@ func main() {
 		context.Background(),
 		connect.NewRequest(&agentv1.GetConfigRequest{
 			Id:       "abc",
-			Metadata: map[string]string{"os": "windows"},
+			Metadata: map[string]string{"os": "linux"},
 		}),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(resp3.Msg)
+	os.WriteFile("run.alloy", []byte(resp3.Msg.Content), 0644)
 }
 
 var matchersRegex = regexp.MustCompile(`(?m)^\s*//\s*matchers?:?\s+(.*)$`)
@@ -167,4 +175,19 @@ func loadPipelinesFromFiles() ([]*pipev1.Pipeline, error) {
 		return nil, err
 	}
 	return pipes, nil
+}
+
+func writePipelineToFile(dir string, p *pipev1.Pipeline) {
+	path := filepath.Join(dir, p.Name+".alloy")
+	content := p.Contents
+	if len(p.Matchers) > 0 {
+		parts := []string{"// matchers:"}
+		parts = append(parts, p.Matchers...)
+		content = strings.Join(parts, " ") + "\n" + content
+	}
+	log.Println(path)
+	err := os.WriteFile(path, []byte(content), 0664)
+	if err != nil {
+		log.Printf("Error writing %s: %s", path, err)
+	}
 }
