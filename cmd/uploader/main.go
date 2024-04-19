@@ -40,11 +40,6 @@ func main() {
 	}
 	log.Printf("Loaded %d local pipelines", len(pipes))
 
-	if *flagBackupDir != "" {
-		os.RemoveAll(*flagBackupDir)
-		os.MkdirAll(*flagBackupDir, 0764)
-	}
-
 	hclient := &http.Client{
 		Transport: &mytransport{},
 	}
@@ -64,11 +59,17 @@ func main() {
 	localNames := map[string]bool{}
 	log.Printf("Found %d remote pipelines", len(resp.Msg.GetPipelines()))
 
-	for _, p := range resp.Msg.Pipelines {
-		remoteNames[p.Name] = true
-		if *flagBackupDir != "" {
+	if *flagBackupDir != "" {
+		os.RemoveAll(*flagBackupDir)
+		os.MkdirAll(*flagBackupDir, 0764)
+		for _, p := range resp.Msg.Pipelines {
 			writePipelineToFile(*flagBackupDir, p)
 		}
+		os.Exit(0)
+	}
+
+	for _, p := range resp.Msg.Pipelines {
+		remoteNames[p.Name] = true
 	}
 	for _, p := range pipes {
 		localNames[p.Name] = true
