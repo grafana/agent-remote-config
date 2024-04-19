@@ -1,0 +1,10 @@
+// matchers: os=linux
+// This config applies to all linux hosts
+
+prometheus.exporter.unix "node_exporter" { }
+
+// Configure a prometheus.scrape component to collect unix metrics.
+prometheus.scrape "demo" {
+  targets    = prometheus.exporter.unix.node_exporter.targets
+  forward_to = []
+}

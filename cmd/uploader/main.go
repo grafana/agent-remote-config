@@ -1,0 +1,170 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"connectrpc.com/connect"
+	agentv1 "github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1"
+	"github.com/grafana/agent-remote-config/api/gen/proto/go/agent/v1/agentv1connect"
+	pipev1 "github.com/grafana/agent-remote-config/api/gen/proto/go/pipeline/v1"
+	"github.com/grafana/agent-remote-config/api/gen/proto/go/pipeline/v1/pipelinev1connect"
+)
+
+var flagDir = flag.String("d", "examples", "Directory to look for pipeline files")
+var flagPurge = flag.Bool("purge", false, "If set, delete any remote pipelines not found locally")
+
+// todo:
+var flagBackupDir = flag.String("backup", "", "If set, download remote configs to this directory and exit")
+
+type mytransport struct{}
+
+func (m *mytransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("X-Scope-OrgID", "42")
+	return http.DefaultTransport.RoundTrip(req)
+}
+
+func main() {
+	flag.Parse()
+	pipes, err := loadPipelinesFromFiles()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Loaded %d local pipelines", len(pipes))
+
+	hclient := &http.Client{
+		Transport: &mytransport{},
+	}
+	pipeclient := pipelinev1connect.NewPipelineServiceClient(
+		hclient,
+		"http://localhost:8081",
+	)
+
+	resp, err := pipeclient.ListPipelines(
+		context.Background(),
+		connect.NewRequest(&pipev1.ListPipelinesRequest{}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	remoteNames := map[string]bool{}
+	localNames := map[string]bool{}
+	log.Printf("Found %d remote pipelines", len(resp.Msg.GetPipelines()))
+
+	for _, p := range resp.Msg.Pipelines {
+		remoteNames[p.Name] = true
+	}
+	for _, p := range pipes {
+		localNames[p.Name] = true
+	}
+	for _, p := range pipes {
+		if remoteNames[p.Name] {
+			// update
+			log.Printf("Updating pipeline %s", p.Name)
+			_, err := pipeclient.UpdatePipeline(
+				context.Background(),
+				connect.NewRequest(&pipev1.UpdatePipelineRequest{
+					Pipeline: p,
+				}),
+			)
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			// create
+			log.Printf("Creating pipeline %s", p.Name)
+			_, err := pipeclient.CreatePipeline(
+				context.Background(),
+				connect.NewRequest(&pipev1.CreatePipelineRequest{
+					Pipeline: p,
+				}),
+			)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	// delete anything not found locally
+	if *flagPurge {
+		for name := range remoteNames {
+			if !localNames[name] {
+				log.Printf("Deleting remote pipeline %s.", name)
+				_, err = pipeclient.DeletePipeline(
+					context.Background(),
+					connect.NewRequest(&pipev1.DeletePipelineRequest{
+						Name: name,
+					}),
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+	}
+
+	agentclient := agentv1connect.NewAgentServiceClient(
+		hclient,
+		"http://localhost:8081",
+	)
+	resp3, err := agentclient.GetConfig(
+		context.Background(),
+		connect.NewRequest(&agentv1.GetConfigRequest{
+			Id:       "abc",
+			Metadata: map[string]string{"os": "windows"},
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(resp3.Msg)
+}
+
+var matchersRegex = regexp.MustCompile(`(?m)^\s*//\s*matchers?:?\s+(.*)$`)
+
+func loadPipelinesFromFiles() ([]*pipev1.Pipeline, error) {
+	pipes := []*pipev1.Pipeline{}
+	err := filepath.Walk(*flagDir, func(path string, info fs.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if ext != ".alloy" && ext != ".river" {
+			return nil
+		}
+		pipeName := strings.TrimSuffix(filepath.Base(path), ext)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		matches := matchersRegex.FindAllStringSubmatch(string(content), -1)
+		if len(matches) > 1 {
+			return fmt.Errorf("%s: Only one matchers comment allowed", path)
+		}
+		matchers := []string{}
+		if len(matches) == 1 {
+			matchers = strings.Split(strings.TrimSpace(matches[0][1]), " ")
+		}
+		pipe := &pipev1.Pipeline{
+			Matchers: matchers,
+			Contents: matchersRegex.ReplaceAllString(string(content), ""),
+			Name:     pipeName,
+		}
+		pipes = append(pipes, pipe)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pipes, nil
+}
