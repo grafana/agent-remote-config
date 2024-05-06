@@ -25,14 +25,18 @@ var flagPurge = flag.Bool("purge", false, "If set, delete any remote pipelines n
 // todo:
 var flagBackupDir = flag.String("backup", "", "If set, download remote configs to this directory and exit")
 
-type mytransport struct{}
+type mytransport struct {
+	username string
+	token    string
+}
 
 func (m *mytransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("X-Scope-OrgID", "42")
+	req.SetBasicAuth(m.username, m.token)
 	return http.DefaultTransport.RoundTrip(req)
 }
 
 func main() {
+
 	flag.Parse()
 	pipes, err := loadPipelinesFromFiles()
 	if err != nil {
@@ -40,12 +44,20 @@ func main() {
 	}
 	log.Printf("Loaded %d local pipelines", len(pipes))
 
+	host := os.Getenv("FLEET_MANAGEMENT_HOST")
+	user := os.Getenv("FLEET_MANAGEMENT_USER")
+	token := os.Getenv("FLEET_MANAGEMENT_TOKEN")
+	log.Println(host, user, token)
 	hclient := &http.Client{
-		Transport: &mytransport{},
+		Transport: &mytransport{
+			username: user,
+			token:    token,
+		},
 	}
+
 	pipeclient := pipelinev1connect.NewPipelineServiceClient(
 		hclient,
-		"http://localhost:8081",
+		host,
 	)
 
 	resp, err := pipeclient.ListPipelines(
@@ -121,7 +133,7 @@ func main() {
 
 	agentclient := agentv1connect.NewAgentServiceClient(
 		hclient,
-		"http://localhost:8081",
+		host,
 	)
 	resp3, err := agentclient.GetConfig(
 		context.Background(),
